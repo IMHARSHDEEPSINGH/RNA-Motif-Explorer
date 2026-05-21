@@ -171,6 +171,10 @@ kable(params_df, caption = "Analysis Parameters", booktabs = TRUE)
 
   writeLines(rmd_content, rmd_path)
 
+  if (!rmarkdown::pandoc_available("1.12.3")) {
+    stop("PDF report generation requires pandoc 1.12.3 or higher. Install pandoc or use an R environment that bundles it, such as RStudio.")
+  }
+
   tryCatch({
     report_env <- new.env(parent = globalenv())
     report_env$motif_table <- motif_table
@@ -180,8 +184,7 @@ kable(params_df, caption = "Analysis Parameters", booktabs = TRUE)
                        quiet       = TRUE)
     pdf_path
   }, error = function(e) {
-    warning(sprintf("PDF rendering failed: %s", conditionMessage(e)))
-    NULL
+    stop(sprintf("PDF rendering failed: %s", conditionMessage(e)))
   })
 }
 

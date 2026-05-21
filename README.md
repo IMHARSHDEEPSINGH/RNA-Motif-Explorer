@@ -107,6 +107,10 @@ install.packages("tinytex")
 tinytex::install_tinytex()
 ```
 
+#### Pandoc requirement
+
+PDF report generation also requires `pandoc` 1.12.3 or newer. Most RStudio installations include pandoc, but if you use plain R you may need to install it separately from https://pandoc.org.
+
 ## Testing
 
 ```r

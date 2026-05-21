@@ -75,6 +75,10 @@ for (pkg in all_pkgs) {
 
 if (length(failed) == 0) {
   cat("\n=== All packages installed successfully! ===\n")
+  if (!requireNamespace("rmarkdown", quietly = TRUE) || !rmarkdown::pandoc_available("1.12.3")) {
+    cat("WARNING: pandoc 1.12.3+ is required for PDF report generation.\n")
+    cat("If you do not have pandoc, install it from https://pandoc.org or use RStudio.\n")
+  }
   cat("Launch the app with:\n")
   cat("  shiny::runApp('shiny_app/')\n\n")
 } else {
