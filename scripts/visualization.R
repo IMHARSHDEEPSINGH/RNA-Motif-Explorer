@@ -40,6 +40,18 @@ THEME_RNA <- function() {
     )
 }
 
+plotly_empty_rna <- function(title = "No data available") {
+  plot_ly(x = numeric(0), y = numeric(0), type = "scatter", mode = "markers") %>%
+    layout(
+      title = list(text = title, font = list(color = "#8B949E")),
+      paper_bgcolor = "#0D1117",
+      plot_bgcolor = "#161B22",
+      font = list(color = "#E6EDF3"),
+      xaxis = list(visible = FALSE, zeroline = FALSE),
+      yaxis = list(visible = FALSE, zeroline = FALSE)
+    )
+}
+
 # -----------------------------------------------------------------------------
 # plot_sequence_length_distribution
 # Histogram of sequence lengths with density overlay.
@@ -207,12 +219,15 @@ plot_enrichment_volcano <- function(motif_table, top_n_labels = 10) {
 plot_positional_heatmap <- function(pos_dist, top_kmers = NULL,
                                      n_bins = 20) {
   if (is.null(pos_dist) || nrow(pos_dist) == 0) {
-    return(plotly_empty() %>%
-             layout(title = "No positional data available"))
+    return(plotly_empty_rna("No positional data available"))
   }
 
   if (!is.null(top_kmers)) {
     pos_dist <- pos_dist %>% filter(kmer %in% top_kmers)
+  }
+
+  if (nrow(pos_dist) == 0) {
+    return(plotly_empty_rna("No positional data for selected motifs"))
   }
 
   heat_data <- pos_dist %>%
@@ -268,8 +283,7 @@ plot_positional_heatmap <- function(pos_dist, top_kmers = NULL,
 # -----------------------------------------------------------------------------
 plot_motif_density <- function(pos_dist, top_n = 8) {
   if (is.null(pos_dist) || nrow(pos_dist) == 0) {
-    return(plotly_empty() %>%
-             layout(title = "No positional data available"))
+    return(plotly_empty_rna("No positional data available"))
   }
 
   top_kmers <- pos_dist %>%
@@ -278,6 +292,10 @@ plot_motif_density <- function(pos_dist, top_n = 8) {
     pull(kmer)
 
   df <- pos_dist %>% filter(kmer %in% top_kmers)
+
+  if (nrow(df) == 0) {
+    return(plotly_empty_rna("No positional data for selected motifs"))
+  }
 
   p <- ggplot(df, aes(x = relative_position, color = kmer, fill = kmer)) +
     geom_density(alpha = 0.15, linewidth = 1) +
