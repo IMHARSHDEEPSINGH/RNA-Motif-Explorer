@@ -142,7 +142,7 @@ kable(top_df, caption = "Top 20 Motifs by Rank", booktabs = TRUE)
 params_df <- data.frame(
   Parameter = c("Input File", "k-mer Length", "Min Sequence Frequency",
                 "Min Occurrence Count"),
-  Value = c("%s", %d, %.2f, %d)
+  Value = c(%s, %d, %.2f, %d)
 )
 kable(params_df, caption = "Analysis Parameters", booktabs = TRUE)
 ```
@@ -163,7 +163,7 @@ kable(params_df, caption = "Analysis Parameters", booktabs = TRUE)
     params_list$k,
     params_list$total_kmers_found,
     params_list$kmers_after_filter,
-    params_list$filepath,
+    shQuote(params_list$filepath),
     params_list$k,
     params_list$min_freq,
     params_list$min_count
@@ -175,11 +175,16 @@ kable(params_df, caption = "Analysis Parameters", booktabs = TRUE)
     stop("PDF report generation requires pandoc 1.12.3 or higher. Install pandoc or use an R environment that bundles it, such as RStudio.")
   }
 
+  if (Sys.which("pdflatex") == "") {
+    stop("PDF report generation requires a LaTeX engine such as TinyTeX. Install it with install.packages('tinytex'); tinytex::install_tinytex().")
+  }
+
   tryCatch({
     report_env <- new.env(parent = globalenv())
     report_env$motif_table <- motif_table
     rmarkdown::render(rmd_path,
-                       output_file = pdf_path,
+                       output_file = basename(pdf_path),
+                       output_dir  = dirname(pdf_path),
                        envir       = report_env,
                        quiet       = TRUE)
     pdf_path
