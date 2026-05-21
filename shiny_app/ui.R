@@ -201,6 +201,36 @@ ui <- dashboardPage(
                  class = "btn-success btn-block",
                  style = "margin-bottom:8px;"),
 
+    fileInput(
+      inputId   = "control_fasta_file",
+      label     = "Optional Control FASTA",
+      accept    = c(".fasta", ".fa", ".txt"),
+      placeholder = "Upload a control/background FASTA"
+    ),
+
+    helpText(
+      "Upload a second FASTA to compare foreground and background motif counts.",
+      "Select 'Control dataset' as the background model to enable group comparisons."
+    ),
+
+    selectInput(
+      inputId = "background_model",
+      label   = "Background Model",
+      choices = c(
+        "Uniform" = "uniform",
+        "Mononucleotide composition" = "mononucleotide",
+        "Control dataset" = "control"
+      ),
+      selected = "uniform"
+    ),
+
+    selectInput(
+      inputId = "p_adjust_method",
+      label   = "P-value correction",
+      choices = c("Bonferroni" = "bonferroni", "FDR" = "fdr"),
+      selected = "bonferroni"
+    ),
+
     tags$div(class = "sidebar-section-header", "Visualization"),
 
     sliderInput(

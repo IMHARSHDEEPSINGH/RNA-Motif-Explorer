@@ -82,15 +82,29 @@ server <- function(input, output, session) {
 
     withProgress(message = "Discovering motifs...", value = 0, {
       tryCatch({
+        incProgress(0.1, detail = "Preparing control dataset...")
+        control_sequences <- NULL
+        if (!is.null(input$control_fasta_file)) {
+          control_result <- preprocess_pipeline(
+            filepath   = input$control_fasta_file$datapath,
+            min_length = input$min_seq_length,
+            verbose    = FALSE
+          )
+          control_sequences <- control_result$sequences
+        }
+
         incProgress(0.2, detail = "Counting k-mers...")
         result <- motif_discovery_pipeline(
-          rna_stringset = rv$preproc_result$sequences,
-          k             = input$motif_length,
-          min_freq      = input$min_freq,
-          min_count     = input$min_count,
-          top_n         = input$top_n_motifs,
-          n_pos_bins    = input$pos_bins,
-          verbose       = FALSE
+          rna_stringset        = rv$preproc_result$sequences,
+          k                    = input$motif_length,
+          min_freq             = input$min_freq,
+          min_count            = input$min_count,
+          top_n                = input$top_n_motifs,
+          n_pos_bins           = input$pos_bins,
+          background_model     = input$background_model,
+          p_adjust_method      = input$p_adjust_method,
+          control_rna_stringset = control_sequences,
+          verbose              = FALSE
         )
         incProgress(0.8, detail = "Finalising ranks...")
         rv$motif_result <- result
@@ -252,16 +266,31 @@ server <- function(input, output, session) {
 
 	  output$table_motifs <- renderDT({
 	    req(rv$motif_result)
+    base_cols <- c("kmer", "total_count", "seq_count", "seq_frequency",
+                   "enrichment_score", "p_value", "p_adjusted",
+                   "significant", "combined_rank")
+    control_cols <- intersect(c("total_count_ctrl", "seq_count_ctrl",
+                                "seq_frequency_ctrl"),
+                              names(rv$motif_result$motif_table))
+
     df <- rv$motif_result$motif_table %>%
-      select(kmer, total_count, seq_count, seq_frequency,
-             enrichment_score, p_value, p_adjusted,
-             significant, combined_rank) %>%
+      select(all_of(c(base_cols, control_cols))) %>%
       mutate(
-        seq_frequency   = round(seq_frequency, 4),
+        seq_frequency    = round(seq_frequency, 4),
         enrichment_score = round(enrichment_score, 3),
-        p_value         = formatC(p_value, format = "e", digits = 2),
-        p_adjusted      = formatC(p_adjusted, format = "e", digits = 2)
+        p_value          = formatC(p_value, format = "e", digits = 2),
+        p_adjusted       = formatC(p_adjusted, format = "e", digits = 2)
       )
+
+    colnames <- c("k-mer", "Total Count", "Seq Count",
+                  "Seq Freq", "Enrichment", "p-value",
+                  "adj. p", "Significant", "Rank")
+    if ("total_count_ctrl" %in% control_cols) {
+      colnames <- c(colnames,
+                    "Control Total Count",
+                    "Control Seq Count",
+                    "Control Seq Freq")
+    }
 
     datatable(
       df,
@@ -276,9 +305,7 @@ server <- function(input, output, session) {
                targets   = seq_len(ncol(df)) - 1)
         )
       ),
-      colnames = c("k-mer", "Total Count", "Seq Count",
-                   "Seq Freq", "Enrichment", "p-value",
-                   "adj. p", "Significant", "Rank"),
+      colnames = colnames,
       class = "cell-border stripe"
     ) %>%
       formatStyle("significant",
@@ -513,6 +540,9 @@ server <- function(input, output, session) {
         "=== Motif Discovery ===",
         sprintf("Unique k-mers found   : %d", p$total_kmers_found),
         sprintf("k-mers after filter   : %d", p$kmers_after_filter),
+        sprintf("Background model      : %s", p$background_model),
+        sprintf("P-value adjustment     : %s", p$p_adjust_method),
+        sprintf("Control dataset used   : %s", ifelse(p$control_dataset, "Yes", "No")),
         sprintf("Significant motifs    : %d",
                 sum(rv$motif_result$motif_table$significant, na.rm = TRUE))
       )

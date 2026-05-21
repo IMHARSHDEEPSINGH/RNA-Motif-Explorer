@@ -107,6 +107,13 @@ install.packages("tinytex")
 tinytex::install_tinytex()
 ```
 
+## Testing
+
+```r
+Rscript install_dependencies.R
+Rscript run_tests.R
+```
+
 ---
 
 ## Quick Start

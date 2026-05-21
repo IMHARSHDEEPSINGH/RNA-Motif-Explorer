@@ -28,7 +28,8 @@ cran_pkgs <- c(
   "gridExtra",
   "scales",
   "RColorBrewer",
-  "plumber"
+  "plumber",
+  "testthat"
 )
 
 bioc_pkgs <- c(
