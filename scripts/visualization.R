@@ -348,30 +348,51 @@ plot_universalmotif_logo <- function(motif_obj, title = NULL) {
 # Bar chart summarizing key dataset metrics for the Overview tab.
 # -----------------------------------------------------------------------------
 plot_dashboard_summary <- function(summary_stats, motif_params) {
+  significant_motifs <- if (is.null(motif_params$significant_motifs)) {
+    0
+  } else {
+    motif_params$significant_motifs
+  }
+  unique_motifs <- if (is.null(motif_params$kmers_after_filter)) {
+    motif_params$total_kmers_found
+  } else {
+    motif_params$kmers_after_filter
+  }
+
   metrics <- tibble(
-    label = c("Total Sequences", "Unique Motifs Found",
-               "Significant Motifs", "Mean Length (nt)"),
+    label = c("Total Sequences", "Mean Length (nt)",
+               "Unique Motifs Found", "Significant Motifs"),
     value = c(
       summary_stats$total_sequences,
-      motif_params$total_kmers_found,
-      motif_params$kmers_after_filter,
-      round(summary_stats$mean_length, 1)
+      round(summary_stats$mean_length, 1),
+      unique_motifs,
+      significant_motifs
+    ),
+    display_value = scales::comma(value)
+  ) %>%
+    mutate(
+      label = factor(label, levels = rev(label)),
+      plot_value = log10(value + 1)
     )
-  )
 
-  p <- ggplot(metrics, aes(x = reorder(label, value), y = value,
-                             fill = label)) +
+  p <- ggplot(metrics, aes(x = label, y = plot_value,
+	                         fill = label,
+	                         text = paste0(label, ": ", display_value))) +
     geom_col(width = 0.6, alpha = 0.9, show.legend = FALSE) +
-    geom_text(aes(label = scales::comma(value)),
+    geom_text(aes(label = display_value),
               hjust = -0.15, color = "#E6EDF3", size = 4) +
     coord_flip() +
-    scale_fill_manual(values = c("#388BFD", "#FF7B72",
-                                  "#2ECC71", "#F0C27F")) +
+    scale_fill_manual(values = c(
+      "Total Sequences" = "#2ECC71",
+      "Mean Length (nt)" = "#388BFD",
+      "Unique Motifs Found" = "#F0C27F",
+      "Significant Motifs" = "#FF7B72"
+    )) +
     scale_y_continuous(expand = expansion(mult = c(0, 0.2))) +
-    labs(title = "Dataset Summary", x = NULL, y = "Value") +
+    labs(title = "Dataset Summary", x = NULL, y = "Value (log10 scale)") +
     THEME_RNA()
 
-  ggplotly(p) %>%
+  ggplotly(p, tooltip = "text") %>%
     layout(paper_bgcolor = "#0D1117", plot_bgcolor = "#161B22",
            font = list(color = "#E6EDF3"))
 }

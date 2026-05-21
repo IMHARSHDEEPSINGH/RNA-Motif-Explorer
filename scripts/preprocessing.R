@@ -11,7 +11,7 @@ library(tibble)
 
 # -----------------------------------------------------------------------------
 # read_fasta_file
-# Reads a FASTA file and returns a named character vector of sequences.
+# Reads a FASTA file and returns sequences without coercing the alphabet.
 # Accepts .fasta, .fa, or .txt extensions.
 # -----------------------------------------------------------------------------
 read_fasta_file <- function(filepath) {
@@ -23,7 +23,7 @@ read_fasta_file <- function(filepath) {
     stop(sprintf("Unsupported file extension: .%s. Use .fasta, .fa, or .txt", ext))
   }
   tryCatch({
-    seqs <- readRNAStringSet(filepath)
+    seqs <- readBStringSet(filepath)
     if (length(seqs) == 0) {
       stop("No sequences found in the file.")
     }
@@ -35,7 +35,7 @@ read_fasta_file <- function(filepath) {
 
 # -----------------------------------------------------------------------------
 # validate_rna_sequences
-# Checks for valid RNA characters (A, U, G, C, N).
+# Checks for valid RNA/DNA characters (A, U, T, G, C, N).
 # Returns a list with valid sequences and a report of removed entries.
 # -----------------------------------------------------------------------------
 validate_rna_sequences <- function(rna_stringset) {
@@ -43,8 +43,8 @@ validate_rna_sequences <- function(rna_stringset) {
   seqs_char    <- as.character(rna_stringset)
   names_char   <- names(rna_stringset)
 
-  # Allowed characters: A U G C N (case-insensitive handled after toupper)
-  valid_pattern <- "^[AUGCN]+$"
+  # Allow T here so accidental DNA input can be converted to RNA during cleaning.
+  valid_pattern <- "^[AUTGCN]+$"
   is_valid      <- grepl(valid_pattern, toupper(seqs_char))
 
   invalid_report <- tibble(
@@ -129,6 +129,10 @@ calculate_sequence_stats <- function(rna_stringset) {
   seq_names <- names(rna_stringset)
   lengths   <- nchar(seqs_char)
 
+  if (length(seqs_char) == 0) {
+    stop("No sequences remain after preprocessing. Lower min_length or check the input FASTA.")
+  }
+
   # Per-nucleotide counts
   count_nt <- function(seq, nt) str_count(seq, nt)
 
@@ -207,6 +211,10 @@ preprocess_pipeline <- function(filepath, min_length = 10, verbose = TRUE) {
   dedup_result <- remove_duplicate_sequences(clean_result$sequences)
   log_msg(sprintf("      Removed %d duplicate sequences",
                   dedup_result$n_removed))
+
+  if (length(dedup_result$sequences) == 0) {
+    stop("No sequences remain after filtering and duplicate removal.")
+  }
 
   # Step 5: Stats
   log_msg("[5/5] Calculating statistics...")

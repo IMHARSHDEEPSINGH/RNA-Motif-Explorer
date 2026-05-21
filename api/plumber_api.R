@@ -103,7 +103,8 @@ function(req, res, sequences, k = 6, min_freq = 0.05,
   }
 
   tryCatch({
-    rna_ss <- RNAStringSet(toupper(sequences))
+    cleaned_sequences <- gsub("T", "U", toupper(sequences))
+    rna_ss <- RNAStringSet(cleaned_sequences)
     result <- motif_discovery_pipeline(
       rna_stringset = rna_ss,
       k             = k,
@@ -137,11 +138,19 @@ function(req, res, sequences, k = 6, top_n = 10) {
   k     <- as.integer(k)
   top_n <- as.integer(top_n)
 
+  if (length(sequences) == 0) {
+    res$status <- 400
+    return(list(success = FALSE, error = "No sequences provided."))
+  }
+
   tryCatch({
-    rna_ss  <- RNAStringSet(toupper(sequences))
-    counts  <- count_kmers_dataset(rna_ss, k)
-    enriched <- calculate_enrichment_scores(counts, sum(nchar(sequences)))
-    ranked  <- rank_motifs(enriched)
+    cleaned_sequences <- gsub("T", "U", toupper(sequences))
+    rna_ss <- RNAStringSet(cleaned_sequences)
+    total_positions <- max(sum(pmax(nchar(cleaned_sequences) - k + 1, 0)), 1)
+    counts <- count_kmers_dataset(rna_ss, k)
+    enriched <- calculate_enrichment_scores(counts, total_positions)
+    scored <- calculate_pvalues(enriched, total_positions)
+    ranked <- rank_motifs(scored)
     list(
       success   = TRUE,
       top_kmers = head(ranked$kmer, top_n)

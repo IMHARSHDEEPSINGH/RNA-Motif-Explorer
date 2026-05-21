@@ -24,11 +24,12 @@ custom_css <- "
     background-color: #21262D !important; }
   .sidebar-menu > li > a > .fa { color: #58A6FF !important; }
 
-  /* Header */
-  .main-header .navbar { background-color: #161B22 !important; }
-  .main-header .logo { background-color: #0D1117 !important;
-    color: #58A6FF !important; font-weight: 700; font-size: 14px; }
-  .main-header .logo:hover { background-color: #161B22 !important; }
+	  /* Header */
+	  .main-header .navbar { background-color: #161B22 !important; }
+	  .main-header .logo { background-color: #0D1117 !important;
+	    color: #58A6FF !important; font-weight: 700; font-size: 14px; }
+	  .main-header .logo:hover { background-color: #161B22 !important; }
+	  .app-logo-icon { margin-right: 6px; color: #58A6FF; }
 
   /* Boxes */
   .box { background: #161B22 !important; border-top-color: #388BFD !important;
@@ -135,12 +136,11 @@ ui <- dashboardPage(
   skin = "blue",
 
   # ---- Header ----
-  dashboardHeader(
-    title = tags$span(
-      tags$img(src = "https://img.icons8.com/fluency/20/dna-helix.png",
-               style = "margin-right:6px; vertical-align:middle;"),
-      "RNA Motif Explorer"
-    ),
+	  dashboardHeader(
+	    title = tags$span(
+	      icon("dna", class = "app-logo-icon"),
+	      "RNA Motif Explorer"
+	    ),
     titleWidth = 240
   ),
 

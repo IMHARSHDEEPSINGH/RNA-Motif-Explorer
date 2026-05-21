@@ -316,8 +316,8 @@ curl -X POST http://localhost:8080/top_kmers \
 → Increase `Min Sequence Frequency` to filter rare k-mers faster. Consider
 using `data.table` for k-mer counting (planned upgrade).
 
-**Biostrings readRNAStringSet fails on DNA file**
-→ The cleaner in `preprocessing.R` auto-converts T→U; most DNA files will work.
+**DNA FASTA input needs RNA conversion**
+→ The cleaner in `preprocessing.R` preserves uploaded bases, then auto-converts T→U.
 
 ---
 

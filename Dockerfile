@@ -37,8 +37,7 @@ RUN R -e "\
     'DT', 'plotly', 'ggplot2', 'ggseqlogo', \
     'dplyr', 'tidyr', 'tibble', 'stringr', \
     'writexl', 'rmarkdown', 'knitr', 'gridExtra', \
-    'scales', 'RColorBrewer', 'plumber', \
-    'tools' \
+    'scales', 'RColorBrewer', 'plumber' \
   ), repos = 'https://cloud.r-project.org', quiet = TRUE); \
   BiocManager::install(c('Biostrings', 'universalmotif'), \
     ask = FALSE, quiet = TRUE)"

@@ -172,9 +172,11 @@ kable(params_df, caption = "Analysis Parameters", booktabs = TRUE)
   writeLines(rmd_content, rmd_path)
 
   tryCatch({
+    report_env <- new.env(parent = globalenv())
+    report_env$motif_table <- motif_table
     rmarkdown::render(rmd_path,
                        output_file = pdf_path,
-                       envir       = list(motif_table = motif_table),
+                       envir       = report_env,
                        quiet       = TRUE)
     pdf_path
   }, error = function(e) {

@@ -21,6 +21,14 @@ extract_kmers <- function(seq, k) {
   sapply(seq_len(n - k + 1), function(i) substr(seq, i, i + k - 1))
 }
 
+find_overlapping_positions <- function(seq, pattern) {
+  k <- nchar(pattern)
+  n <- nchar(seq)
+  if (n < k) return(integer(0))
+  starts <- seq_len(n - k + 1)
+  unname(starts[substr(seq, starts, starts + k - 1) == pattern])
+}
+
 # -----------------------------------------------------------------------------
 # count_kmers_dataset
 # For each k-mer in the full dataset, count:
@@ -48,6 +56,11 @@ count_kmers_dataset <- function(rna_stringset, k) {
   # Remove k-mers with ambiguous nucleotides (N)
   all_kmers <- all_kmers[!grepl("N", all_kmers$kmer), ]
 
+  if (nrow(all_kmers) == 0) {
+    return(tibble(kmer = character(0), total_count = integer(0),
+                  seq_count = integer(0), seq_frequency = numeric(0)))
+  }
+
   summary <- all_kmers %>%
     group_by(kmer) %>%
     summarise(
@@ -70,6 +83,12 @@ count_kmers_dataset <- function(rna_stringset, k) {
 # Enrichment score = observed_freq / expected_freq.
 # -----------------------------------------------------------------------------
 calculate_enrichment_scores <- function(kmer_counts, total_positions) {
+  if (nrow(kmer_counts) == 0) {
+    return(kmer_counts %>%
+             mutate(observed_freq = numeric(0), expected_freq = numeric(0),
+                    expected_count = numeric(0), enrichment_score = numeric(0)))
+  }
+
   k <- nchar(kmer_counts$kmer[1])
 
   # Background: uniform model p(A)=p(U)=p(G)=p(C)=0.25
@@ -92,6 +111,12 @@ calculate_enrichment_scores <- function(kmer_counts, total_positions) {
 # Uses Bonferroni correction for multiple testing.
 # -----------------------------------------------------------------------------
 calculate_pvalues <- function(kmer_enriched, total_positions) {
+  if (nrow(kmer_enriched) == 0) {
+    return(kmer_enriched %>%
+             mutate(p_value = numeric(0), p_adjusted = numeric(0),
+                    significant = logical(0), neg_log10_p = numeric(0)))
+  }
+
   k             <- nchar(kmer_enriched$kmer[1])
   expected_prob <- 0.25^k
   n_tests       <- nrow(kmer_enriched)
@@ -125,12 +150,12 @@ compute_positional_distribution <- function(rna_stringset, top_kmers,
   pos_data <- lapply(top_kmers, function(km) {
     k <- nchar(km)
     pos_list <- lapply(seq_along(seqs_char), function(i) {
-      seq_len_i <- nchar(seqs_char[i])
+      seq_len_i <- unname(nchar(seqs_char[i]))
       if (seq_len_i < k) return(NULL)
-      hits <- gregexpr(km, seqs_char[i], fixed = TRUE)[[1]]
-      if (hits[1] == -1) return(NULL)
+      hits <- find_overlapping_positions(seqs_char[i], km)
+      if (length(hits) == 0) return(NULL)
       data.frame(
-        kmer              = km,
+        kmer              = unname(km),
         abs_position      = as.integer(hits),
         seq_length        = seq_len_i,
         relative_position = as.integer(hits) / seq_len_i,
@@ -193,6 +218,8 @@ build_pwm_from_kmers <- function(kmer_vec) {
 # Lower rank_score = better motif.
 # -----------------------------------------------------------------------------
 rank_motifs <- function(motif_table) {
+  if (nrow(motif_table) == 0) return(motif_table)
+
   motif_table %>%
     mutate(
       rank_freq        = rank(-total_count,    ties.method = "min"),
@@ -229,8 +256,12 @@ motif_discovery_pipeline <- function(rna_stringset,
 
   log_msg(sprintf("=== Motif Discovery Pipeline (k=%d) ===", k))
 
+  if (length(rna_stringset) == 0) {
+    stop("No sequences supplied for motif discovery.")
+  }
+
   seqs_char       <- as.character(rna_stringset)
-  total_positions <- sum(nchar(seqs_char) - k + 1)
+  total_positions <- sum(pmax(nchar(seqs_char) - k + 1, 0))
   total_positions <- max(total_positions, 1)
 
   # Step 1: Count k-mers
@@ -298,10 +329,11 @@ motif_discovery_pipeline <- function(rna_stringset,
       k          = k,
       min_freq   = min_freq,
       min_count  = min_count,
-      top_n      = top_n,
-      total_kmers_found = nrow(kmer_counts),
-      kmers_after_filter = nrow(kmer_filtered)
-    ),
+	      top_n      = top_n,
+	      total_kmers_found = nrow(kmer_counts),
+	      kmers_after_filter = nrow(kmer_filtered),
+	      significant_motifs = sum(motif_ranked$significant, na.rm = TRUE)
+	    ),
     log = log
   )
 }

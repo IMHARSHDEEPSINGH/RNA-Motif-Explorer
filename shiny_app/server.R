@@ -192,8 +192,8 @@ server <- function(input, output, session) {
     # Extract the aligned kmer context
     k         <- nchar(km)
     kmer_instances <- unlist(lapply(hit_seqs, function(s) {
-      positions <- gregexpr(km, s, fixed = TRUE)[[1]]
-      if (positions[1] == -1) return(NULL)
+      positions <- find_overlapping_positions(s, km)
+      if (length(positions) == 0) return(NULL)
       sapply(as.integer(positions), function(p) substr(s, p, p + k - 1))
     }))
     kmer_instances <- unique(kmer_instances[!is.na(kmer_instances)])
@@ -209,8 +209,8 @@ server <- function(input, output, session) {
     plots <- lapply(top_kmers, function(km) {
       k    <- nchar(km)
       hits <- unlist(lapply(seqs_char, function(s) {
-        p <- gregexpr(km, s, fixed = TRUE)[[1]]
-        if (p[1] == -1) return(NULL)
+        p <- find_overlapping_positions(s, km)
+        if (length(p) == 0) return(NULL)
         sapply(as.integer(p), function(pos) substr(s, pos, pos + k - 1))
       }))
       hits <- unique(hits[!is.na(hits)])
@@ -390,8 +390,8 @@ server <- function(input, output, session) {
       plots <- lapply(top_kmers, function(km) {
         k    <- nchar(km)
         hits <- unlist(lapply(seqs_char, function(s) {
-          p <- gregexpr(km, s, fixed = TRUE)[[1]]
-          if (p[1] == -1) return(NULL)
+          p <- find_overlapping_positions(s, km)
+          if (length(p) == 0) return(NULL)
           sapply(as.integer(p), function(pos) substr(s, pos, pos + k - 1))
         }))
         hits <- unique(hits[!is.na(hits)])
