@@ -293,19 +293,17 @@ server <- function(input, output, session) {
 	  # --------------------------------------------------------------------------
 	  current_positional_dist <- reactive({
 	    req(rv$motif_result, rv$preproc_result)
-	    pos_dist <- rv$motif_result$positional_dist
-
-	    if (is.null(pos_dist) || nrow(pos_dist) == 0) {
-	      top_kmers <- head(rv$motif_result$top_motifs$kmer,
-	                        max(input$n_top_display, 8))
-	      pos_dist <- compute_positional_distribution(
-	        rv$preproc_result$sequences,
-	        top_kmers,
-	        n_bins = input$pos_bins
-	      )
-	      rv$motif_result$positional_dist <- pos_dist
-	    }
-
+	    n_motifs <- max(input$n_top_display, 8)
+	    top_kmers <- unique(c(
+	      head(rv$motif_result$top_motifs$kmer, n_motifs),
+	      head(rv$motif_result$motif_table$kmer, n_motifs)
+	    ))
+	    pos_dist <- compute_positional_distribution(
+	      rv$preproc_result$sequences,
+	      top_kmers,
+	      n_bins = input$pos_bins
+	    )
+	    rv$motif_result$positional_dist <- pos_dist
 	    pos_dist
 	  })
 

@@ -21,12 +21,23 @@ extract_kmers <- function(seq, k) {
   sapply(seq_len(n - k + 1), function(i) substr(seq, i, i + k - 1))
 }
 
+normalize_rna_text <- function(seq) {
+  gsub("T", "U", toupper(seq))
+}
+
 find_overlapping_positions <- function(seq, pattern) {
+  seq <- normalize_rna_text(seq)
+  pattern <- normalize_rna_text(pattern)
   k <- nchar(pattern)
   n <- nchar(seq)
   if (n < k) return(integer(0))
   starts <- seq_len(n - k + 1)
-  unname(starts[substr(seq, starts, starts + k - 1) == pattern])
+  candidates <- vapply(
+    starts,
+    function(i) substr(seq, i, i + k - 1),
+    character(1)
+  )
+  unname(starts[candidates == pattern])
 }
 
 # -----------------------------------------------------------------------------
@@ -145,7 +156,15 @@ calculate_pvalues <- function(kmer_enriched, total_positions) {
 # -----------------------------------------------------------------------------
 compute_positional_distribution <- function(rna_stringset, top_kmers,
                                             n_bins = 20) {
-  seqs_char <- as.character(rna_stringset)
+  seqs_char <- normalize_rna_text(as.character(rna_stringset))
+  top_kmers <- unique(normalize_rna_text(as.character(top_kmers)))
+  top_kmers <- top_kmers[!is.na(top_kmers) & nzchar(top_kmers)]
+
+  if (length(seqs_char) == 0 || length(top_kmers) == 0) {
+    return(tibble(kmer = character(0), abs_position = integer(0),
+                  seq_length = integer(0), relative_position = numeric(0),
+                  position_bin = integer(0)))
+  }
 
   pos_data <- lapply(top_kmers, function(km) {
     k <- nchar(km)
