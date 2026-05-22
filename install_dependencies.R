@@ -35,8 +35,8 @@ cran_pkgs <- c(
 
 bioc_pkgs <- c(
   "Biostrings",
-  "universalmotif",
-  "RNAstructure"
+  "universalmotif"
+  # Note: RNAstructure is optional - if unavailable, heuristic prediction is used
 )
 
 cat("Installing CRAN packages...\n")
