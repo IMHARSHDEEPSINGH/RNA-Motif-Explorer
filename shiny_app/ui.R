@@ -155,8 +155,8 @@ ui <- dashboardPage(
     fileInput(
       inputId  = "fasta_file",
       label    = "Upload FASTA File",
-      accept   = c(".fasta", ".fa", ".txt"),
-      placeholder = "Drop .fasta / .fa / .txt"
+      accept   = c(".fasta", ".fa", ".fna", ".txt"),
+      placeholder = "Drop .fasta / .fa / .fna / .txt"
     ),
 
     numericInput(
@@ -204,7 +204,7 @@ ui <- dashboardPage(
     fileInput(
       inputId   = "control_fasta_file",
       label     = "Optional Control FASTA",
-      accept    = c(".fasta", ".fa", ".txt"),
+      accept    = c(".fasta", ".fa", ".fna", ".txt"),
       placeholder = "Upload a control/background FASTA"
     ),
 

@@ -213,7 +213,7 @@ function() {
     default_min_freq  = 0.05,
     default_min_count = 2,
     default_top_n     = 20,
-    supported_formats = c(".fasta", ".fa", ".txt"),
+    supported_formats = c(".fasta", ".fa", ".fna", ".txt"),
     background_models = c("uniform", "mononucleotide", "control"),
     p_adjust_methods  = c("bonferroni", "fdr")
   )

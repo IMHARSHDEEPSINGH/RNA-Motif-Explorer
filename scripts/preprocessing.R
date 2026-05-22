@@ -12,15 +12,15 @@ library(tibble)
 # -----------------------------------------------------------------------------
 # read_fasta_file
 # Reads a FASTA file and returns sequences without coercing the alphabet.
-# Accepts .fasta, .fa, or .txt extensions.
+# Accepts .fasta, .fa, .fna, or .txt extensions.
 # -----------------------------------------------------------------------------
 read_fasta_file <- function(filepath) {
   if (!file.exists(filepath)) {
     stop(sprintf("File not found: %s", filepath))
   }
   ext <- tolower(tools::file_ext(filepath))
-  if (!ext %in% c("fasta", "fa", "txt")) {
-    stop(sprintf("Unsupported file extension: .%s. Use .fasta, .fa, or .txt", ext))
+  if (!ext %in% c("fasta", "fa", "fna", "txt")) {
+    stop(sprintf("Unsupported file extension: .%s. Use .fasta, .fa, .fna, or .txt", ext))
   }
   tryCatch({
     seqs <- readBStringSet(filepath)

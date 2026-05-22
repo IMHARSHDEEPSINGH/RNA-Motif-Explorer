@@ -145,7 +145,7 @@ shiny::runApp("shiny_app/")
 
 | Control | Description | Default |
 |---|---|---|
-| Upload FASTA | `.fasta`, `.fa`, `.txt` files | — |
+| Upload FASTA | `.fasta`, `.fa`, `.fna`, `.txt` files | — |
 | Min Sequence Length | Filter sequences shorter than N nt | 10 |
 | Motif Length (k) | k-mer length to extract (3–15) | 6 |
 | Min Sequence Frequency | Motif must appear in at least this fraction of sequences | 0.05 |

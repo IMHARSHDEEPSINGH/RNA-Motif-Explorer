@@ -13,3 +13,12 @@ test_that("preprocess_pipeline reads and cleans FASTA correctly", {
   expect_true(all(grepl("^[AUGC]+$", as.character(result$sequences))))
   expect_false(any(grepl("N", as.character(result$sequences))))
 })
+
+test_that("preprocess_pipeline accepts .fna FASTA files", {
+  fasta <- tempfile(fileext = ".fna")
+  cat(">seq1\nAUGCAUGC\n>seq2\nAUGC\n", file = fasta)
+
+  result <- preprocess_pipeline(fasta, min_length = 4, verbose = FALSE)
+  expect_equal(result$stats$summary$total_sequences, 2)
+  expect_equal(length(result$sequences), 2)
+})

@@ -119,15 +119,27 @@ plot_nucleotide_frequencies <- function(per_seq_stats) {
 # Violin + box plot of GC content distribution.
 # -----------------------------------------------------------------------------
 plot_gc_content <- function(per_seq_stats) {
-  p <- ggplot(per_seq_stats, aes(x = "Sequences", y = gc_content)) +
-    geom_violin(fill = "#388BFD", alpha = 0.6, color = NA) +
-    geom_boxplot(width = 0.1, fill = "#58A6FF",
-                 color = "#E6EDF3", outlier.color = "#FF7B72") +
+  mean_gc <- mean(per_seq_stats$gc_content)
+  p <- ggplot(per_seq_stats, aes(x = "Sequences", y = gc_content))
+
+  if (nrow(per_seq_stats) < 2) {
+    p <- p +
+      geom_boxplot(width = 0.1, fill = "#58A6FF",
+                   color = "#E6EDF3", outlier.color = "#FF7B72") +
+      geom_jitter(width = 0.1, height = 0, size = 3,
+                  color = "#58A6FF", alpha = 0.9)
+  } else {
+    p <- p +
+      geom_violin(fill = "#388BFD", alpha = 0.6, color = NA) +
+      geom_boxplot(width = 0.1, fill = "#58A6FF",
+                   color = "#E6EDF3", outlier.color = "#FF7B72")
+  }
+
+  p <- p +
     scale_y_continuous(labels = scales::percent_format()) +
     labs(
       title    = "GC Content Distribution",
-      subtitle = sprintf("Mean GC = %.1f%%",
-                         mean(per_seq_stats$gc_content) * 100),
+      subtitle = sprintf("Mean GC = %.1f%%", mean_gc * 100),
       x        = NULL,
       y        = "GC Content"
     ) +
