@@ -390,7 +390,113 @@ ui <- dashboardPage(
         )
       ),
 
-      # ----- TAB 5: Downloads -----
+      # ----- TAB 5: Secondary Structure -----
+      tabPanel(
+        title = tagList(icon("dna"), " Secondary Structure"),
+        value = "tab_structure",
+
+        fluidRow(
+          box(
+            width = 12,
+            title = "Structure Prediction Settings",
+            solidHeader = TRUE,
+            collapsible = TRUE,
+
+            fluidRow(
+              column(4,
+                checkboxInput(
+                  inputId = "enable_structure",
+                  label = "Enable Secondary Structure Prediction",
+                  value = FALSE
+                ),
+                helpText("Predict RNA secondary structure using RNAstructure package.",
+                         "This may take longer for large datasets.")
+              ),
+              column(4,
+                actionButton(
+                  inputId = "run_structure_predict",
+                  label = "Predict Structures",
+                  icon = icon("cog"),
+                  class = "btn-success",
+                  style = "margin-top: 25px;"
+                )
+              ),
+              column(4,
+                uiOutput("structure_status")
+              )
+            )
+          )
+        ),
+
+        fluidRow(
+          box(
+            width = 6,
+            title = "Secondary Structure Statistics",
+            solidHeader = TRUE,
+            collapsible = TRUE,
+            plotlyOutput("plot_structure_stats", height = "350px")
+          ),
+          box(
+            width = 6,
+            title = "Structure Summary",
+            solidHeader = TRUE,
+            collapsible = TRUE,
+            DTOutput("table_structure_summary")
+          )
+        ),
+
+        fluidRow(
+          box(
+            width = 12,
+            title = "Motif Enrichment by Structure Type",
+            solidHeader = TRUE,
+            collapsible = TRUE,
+            plotlyOutput("plot_motif_struct_enrichment", height = "400px")
+          )
+        ),
+
+        fluidRow(
+          box(
+            width = 6,
+            title = "Motif Distribution Across Structures",
+            solidHeader = TRUE,
+            collapsible = TRUE,
+            plotlyOutput("plot_motif_struct_distribution", height = "350px")
+          ),
+          box(
+            width = 6,
+            title = "Motif-Structure Correlation",
+            solidHeader = TRUE,
+            collapsible = TRUE,
+            plotlyOutput("plot_struct_correlation", height = "350px")
+          )
+        ),
+
+        fluidRow(
+          box(
+            width = 12,
+            title = "Motif-Structure Mapping Details",
+            solidHeader = TRUE,
+            collapsible = TRUE,
+            collapsed = TRUE,
+
+            fluidRow(
+              column(12,
+                helpText("View detailed mapping of each motif occurrence to its structural context.",
+                         "Click on columns to sort; use the search box to filter results.")
+              )
+            ),
+
+            fluidRow(
+              column(12,
+                DTOutput("table_motif_structure_map")
+              )
+            )
+          )
+        )
+      ),
+
+      # ----- TAB 6: Downloads -----
       tabPanel(
         title = tagList(icon("download"), " Downloads"),
         value = "tab_downloads",
@@ -411,7 +517,16 @@ ui <- dashboardPage(
                                class = "btn-primary btn-block",
                                style = "margin-bottom:8px;"),
                 downloadButton("dl_pos_csv",    "Positional Data (.csv)",
-                               class = "btn-primary btn-block")
+                               class = "btn-primary btn-block"),
+                downloadButton("dl_structure_csv", "Structure Predictions (.csv)",
+                               class = "btn-primary btn-block",
+                               style = "margin-top:8px;"),
+                downloadButton("dl_motif_struct_csv", "Motif-Structure Map (.csv)",
+                               class = "btn-primary btn-block",
+                               style = "margin-top:4px;"),
+                downloadButton("dl_struct_enrich_csv", "Structure Enrichment (.csv)",
+                               class = "btn-primary btn-block",
+                               style = "margin-top:4px;")
               ),
               column(4,
                 tags$h4("Plot Downloads", style = "color:#58A6FF;"),

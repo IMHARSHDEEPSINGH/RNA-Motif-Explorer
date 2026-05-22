@@ -218,3 +218,146 @@ function() {
     p_adjust_methods  = c("bonferroni", "fdr")
   )
 }
+
+# =============================================================================
+# Secondary Structure Prediction Endpoints
+# =============================================================================
+
+# Source structure modules
+source("scripts/structure_prediction.R", local = TRUE)
+source("scripts/motif_structure_analysis.R", local = TRUE)
+
+# --------------------------------------------------------------------------
+#* Predict secondary structure for RNA sequences
+#* @post /structure/predict
+#* @serializer json
+function(req, res) {
+  body <- tryCatch(
+    jsonlite::fromJSON(rawToChar(req$body)),
+    error = function(e) NULL
+  )
+  
+  if (is.null(body) || is.null(body$sequences)) {
+    res$status <- 400
+    return(list(error = "Invalid request: 'sequences' (array) required"))
+  }
+  
+  tryCatch({
+    sequences <- unlist(body$sequences)
+    
+    if (length(sequences) == 0) {
+      res$status <- 400
+      return(list(error = "No sequences provided"))
+    }
+    
+    structures_df <- predict_structures_dataset(sequences)
+    
+    list(
+      success = TRUE,
+      count = nrow(structures_df),
+      structures = jsonlite::toJSON(structures_df, pretty = TRUE)
+    )
+  }, error = function(e) {
+    res$status <- 500
+    list(success = FALSE, error = conditionMessage(e))
+  })
+}
+
+# --------------------------------------------------------------------------
+#* Get motif enrichment in different secondary structure types
+#* @post /structure/motif_enrichment
+#* @serializer json
+function(req, res) {
+  body <- tryCatch(
+    jsonlite::fromJSON(rawToChar(req$body)),
+    error = function(e) NULL
+  )
+  
+  if (is.null(body) || is.null(body$sequences) || is.null(body$motif_table)) {
+    res$status <- 400
+    return(list(error = "Invalid request: 'sequences' and 'motif_table' required"))
+  }
+  
+  tryCatch({
+    sequences <- unlist(body$sequences)
+    motif_table_list <- body$motif_table
+    
+    # Convert list to data frame
+    if (is.list(motif_table_list) && !is.null(names(motif_table_list[[1]]))) {
+      motif_table <- as.data.frame(do.call(rbind, motif_table_list), 
+                                  stringsAsFactors = FALSE)
+    } else {
+      motif_table <- motif_table_list
+    }
+    
+    structures_df <- predict_structures_dataset(sequences)
+    motif_struct_map <- map_motifs_to_structures_dataset(
+      sequences,
+      structures_df,
+      motif_table
+    )
+    
+    enrichment <- calculate_motif_structure_enrichment(
+      motif_struct_map,
+      motif_table
+    )
+    
+    list(
+      success = TRUE,
+      enrichment_count = nrow(enrichment),
+      enrichment = jsonlite::toJSON(enrichment, pretty = TRUE)
+    )
+  }, error = function(e) {
+    res$status <- 500
+    list(success = FALSE, error = conditionMessage(e))
+  })
+}
+
+# --------------------------------------------------------------------------
+#* Compute motif-structure correlation metrics
+#* @post /structure/correlation
+#* @serializer json
+function(req, res) {
+  body <- tryCatch(
+    jsonlite::fromJSON(rawToChar(req$body)),
+    error = function(e) NULL
+  )
+  
+  if (is.null(body) || is.null(body$sequences) || is.null(body$motif_table)) {
+    res$status <- 400
+    return(list(error = "Invalid request: 'sequences' and 'motif_table' required"))
+  }
+  
+  tryCatch({
+    sequences <- unlist(body$sequences)
+    motif_table_list <- body$motif_table
+    
+    if (is.list(motif_table_list) && !is.null(names(motif_table_list[[1]]))) {
+      motif_table <- as.data.frame(do.call(rbind, motif_table_list),
+                                  stringsAsFactors = FALSE)
+    } else {
+      motif_table <- motif_table_list
+    }
+    
+    structures_df <- predict_structures_dataset(sequences)
+    motif_struct_map <- map_motifs_to_structures_dataset(
+      sequences,
+      structures_df,
+      motif_table
+    )
+    
+    correlation <- compute_structure_correlation_metrics(
+      motif_struct_map,
+      structures_df
+    )
+    
+    list(
+      success = TRUE,
+      correlation_count = nrow(correlation),
+      correlations = jsonlite::toJSON(correlation, pretty = TRUE)
+    )
+  }, error = function(e) {
+    res$status <- 500
+    list(success = FALSE, error = conditionMessage(e))
+  })
+}

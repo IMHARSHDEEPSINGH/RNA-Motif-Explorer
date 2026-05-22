@@ -29,8 +29,9 @@ format and runs a fully automated analysis pipeline:
 - **Preprocessing** — validation, cleaning, deduplication, quality metrics
 - **Motif Discovery** — k-mer extraction, frequency counting, enrichment scoring
 - **Statistical Testing** — binomial tests, Bonferroni correction, combined ranking
+- **Secondary Structure Prediction** — RNA folding, structure element mapping, motif enrichment by structure
 - **Visualization** — sequence logos, frequency bars, volcano plots, positional
-  heatmaps, density curves
+  heatmaps, structure plots, enrichment heatmaps
 - **Export** — CSV tables, PNG plots, PDF reports
 
 All of this is wrapped in a dark-themed **Shiny Dashboard** with interactive
@@ -48,6 +49,8 @@ RNA-Motif-Explorer/
 ├── scripts/
 │   ├── preprocessing.R      # FASTA reading, validation, cleaning, stats
 │   ├── motif_detection.R    # k-mer counts, enrichment, p-values, PWMs
+│   ├── structure_prediction.R    # Secondary structure prediction (RNAstructure)
+│   ├── motif_structure_analysis.R # Motif-structure mapping & enrichment
 │   ├── visualization.R      # All ggplot2 / plotly plot functions
 │   └── report_generation.R  # CSV/PNG/PDF export utilities
 ├── shiny_app/
@@ -162,6 +165,7 @@ shiny::runApp("shiny_app/")
 | Motif Logos | Interactive sequence logo per motif; 6-logo grid |
 | Frequency Analysis | Ranked bar chart, volcano plot, full searchable table |
 | Enrichment Heatmaps | Positional heatmap, density curves |
+| Secondary Structure | Structure statistics, motif enrichment by structure type, structure-motif correlation |
 | Downloads | CSV/PNG/PDF downloads |
 
 ---
@@ -193,7 +197,34 @@ rank_motifs()                  → combined frequency + enrichment + significanc
 
 **Background model:** Uniform (p = 0.25 per nucleotide).
 
-### Step 3 — Visualization (`visualization.R`)
+### Step 3 — Secondary Structure Prediction (`structure_prediction.R`)
+
+```
+predict_secondary_structure()    → RNAstructure MFE folding
+predict_structures_dataset()     → bulk structure prediction for all sequences
+parse_structure_elements()       → count stems, loops, bulges, hairpins
+map_position_to_structure()      → assign structure type to each position
+structure_statistics()           → aggregate structure metrics
+```
+
+**Details:** Uses the RNAstructure R package to compute minimum free energy (MFE) secondary structures
+in dot-bracket notation. Each position is classified as stem (paired), loop, bulge, or hairpin.
+
+### Step 4 — Motif-Structure Analysis (`motif_structure_analysis.R`)
+
+```
+find_motif_positions_in_sequence()      → locate motif occurrences
+classify_motif_positions()              → assign structure context to each occurrence
+map_motifs_to_structures_dataset()      → full dataset mapping
+calculate_motif_structure_enrichment()  → Fisher's exact test, log-odds ratios
+get_motif_structure_distribution()      → count motifs per structure type
+compute_structure_correlation_metrics() → correlation between motif presence & structure
+```
+
+**Outputs:** Enrichment p-values, distributions, correlations showing which structural elements
+preferentially contain specific motifs.
+
+### Step 5 — Visualization (`visualization.R`)
 
 All plots use a consistent dark theme (`THEME_RNA()`) and the RNA color scheme:
 - A = `#E74C3C` (red) · U = `#3498DB` (blue) · G = `#2ECC71` (green) · C = `#F39C12` (orange)
@@ -207,6 +238,11 @@ All plots use a consistent dark theme (`THEME_RNA()`) and the RNA color scheme:
 | `motif_table.csv` | Full ranked motif table with all statistics |
 | `sequence_stats.csv` | Per-sequence statistics |
 | `positional_distribution.csv` | Motif positions across sequences |
+| `structure_predictions.csv` | Predicted secondary structures (dot-bracket notation) |
+| `motif_structure_mapping.csv` | Motif occurrences mapped to structure elements |
+| `structure_enrichment.csv` | Enrichment scores and p-values for motifs in each structure type |
+| `motif_structure_distribution.csv` | Motif frequency by structure type |
+| `structure_correlation.csv` | Correlation between motifs and structural elements |
 | `freq_bar_k{k}.png` | Frequency bar chart |
 | `volcano_k{k}.png` | Enrichment volcano plot |
 | `logos_grid_k{k}.png` | Sequence logos grid |
@@ -274,6 +310,9 @@ plumber::plumb("api/plumber_api.R")$run(port = 8080)
 | POST | `/preprocess` | Upload + preprocess FASTA |
 | POST | `/discover` | Run motif discovery on sequences |
 | POST | `/top_kmers` | Lightweight top k-mer endpoint |
+| POST | `/structure/predict` | Predict secondary structure for sequences |
+| POST | `/structure/motif_enrichment` | Get motif enrichment across structure types |
+| POST | `/structure/correlation` | Compute motif-structure correlation metrics |
 
 ### Example (curl)
 
@@ -297,7 +336,7 @@ curl -X POST http://localhost:8080/top_kmers \
 | Cloud deployment | AWS/GCP with Docker + load balancer |
 | Multi-sample comparison | Add sample grouping + differential enrichment |
 | MEME/JASPAR integration | Import known RNA motif databases |
-| Structure prediction | Integrate ViennaRNA / Rfold |
+| ~~Structure prediction~~ | ✅ **DONE** — RNAstructure integration with enrichment analysis |
 | Alignment-based logos | Smith-Waterman local alignment before PWM |
 | GPU k-mer counting | Rewrite `count_kmers_dataset` with data.table or C++ via Rcpp |
 | Authentication | Add shinymanager for user login |

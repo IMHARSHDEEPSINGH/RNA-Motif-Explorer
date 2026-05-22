@@ -29,12 +29,14 @@ cran_pkgs <- c(
   "scales",
   "RColorBrewer",
   "plumber",
-  "testthat"
+  "testthat",
+  "igraph"
 )
 
 bioc_pkgs <- c(
   "Biostrings",
-  "universalmotif"
+  "universalmotif",
+  "RNAstructure"
 )
 
 cat("Installing CRAN packages...\n")

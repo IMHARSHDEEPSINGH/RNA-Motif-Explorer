@@ -17,6 +17,8 @@ source("../scripts/preprocessing.R")
 source("../scripts/motif_detection.R")
 source("../scripts/visualization.R")
 source("../scripts/report_generation.R")
+source("../scripts/structure_prediction.R")
+source("../scripts/motif_structure_analysis.R")
 
 server <- function(input, output, session) {
 
@@ -27,7 +29,12 @@ server <- function(input, output, session) {
     preproc_result  = NULL,
     motif_result    = NULL,
     status_msg      = "Ready. Upload a FASTA file to begin.",
-    pdf_path        = NULL
+    pdf_path        = NULL,
+    structures_df   = NULL,
+    motif_struct_map = NULL,
+    struct_enrichment = NULL,
+    struct_distribution = NULL,
+    struct_correlation = NULL
   )
 
   set_status <- function(msg, type = "info") {
@@ -550,3 +557,198 @@ server <- function(input, output, session) {
     paste(lines, collapse = "\n")
   })
 }
+
+  # --------------------------------------------------------------------------
+  # Step 4: Secondary Structure Prediction
+  # --------------------------------------------------------------------------
+  observeEvent(input$run_structure_predict, {
+    req(rv$preproc_result)
+    req(input$enable_structure)
+    set_status("Predicting secondary structures...", "info")
+
+    withProgress(message = "Predicting structures...", value = 0, {
+      tryCatch({
+        incProgress(0.2, detail = "Starting RNAstructure...")
+        sequences <- rv$preproc_result$cleaned_sequences
+        
+        incProgress(0.4, detail = "Predicting structures for all sequences...")
+        structures_df <- predict_structures_dataset(sequences)
+        incProgress(0.6, detail = "Computing structure statistics...")
+        struct_stats <- structure_statistics(structures_df)
+        
+        rv$structures_df <- structures_df
+        
+        # If motif results exist, compute structure enrichment
+        if (!is.null(rv$motif_result) && !is.null(rv$motif_result$motif_table)) {
+          incProgress(0.7, detail = "Mapping motifs to structures...")
+          
+          motif_struct_map <- map_motifs_to_structures_dataset(
+            sequences,
+            structures_df,
+            rv$motif_result$motif_table
+          )
+          rv$motif_struct_map <- motif_struct_map
+          
+          incProgress(0.8, detail = "Computing enrichment analysis...")
+          
+          struct_enrichment <- calculate_motif_structure_enrichment(
+            motif_struct_map,
+            rv$motif_result$motif_table
+          )
+          rv$struct_enrichment <- struct_enrichment
+          
+          struct_distribution <- get_motif_structure_distribution(motif_struct_map)
+          rv$struct_distribution <- struct_distribution
+          
+          struct_correlation <- compute_structure_correlation_metrics(
+            motif_struct_map,
+            structures_df
+          )
+          rv$struct_correlation <- struct_correlation
+          
+          # Export results
+          incProgress(0.9, detail = "Saving results...")
+          export_motif_structure_analysis(
+            motif_struct_map,
+            struct_enrichment,
+            struct_distribution,
+            struct_correlation,
+            output_dir = "outputs"
+          )
+        }
+        
+        export_structures_to_csv(structures_df, output_dir = "outputs")
+        
+        incProgress(1.0, detail = "Done!")
+        set_status(sprintf("Structure prediction complete: %d sequences analyzed.",
+                          nrow(structures_df)), "success")
+      }, error = function(e) {
+        set_status(paste("Structure prediction failed:", conditionMessage(e)), "error")
+        rv$structures_df <- NULL
+      })
+    })
+  })
+
+  # --------------------------------------------------------------------------
+  # Structure Visualization Outputs
+  # --------------------------------------------------------------------------
+  output$structure_status <- renderUI({
+    if (is.null(rv$structures_df)) {
+      return(
+        tags$div(
+          style = "color:#8B949E; padding:10px;",
+          "Structures not yet predicted. Enable and click button above."
+        )
+      )
+    }
+    tags$div(
+      style = "color:#2ECC71; padding:10px;",
+      icon("check-circle"),
+      sprintf("Structures ready: %d sequences", nrow(rv$structures_df))
+    )
+  })
+
+  output$plot_structure_stats <- renderPlotly({
+    if (is.null(rv$structures_df)) {
+      return(plotly_empty_rna("Run structure prediction first"))
+    }
+    struct_stats <- structure_statistics(rv$structures_df)
+    plot_structure_statistics(struct_stats)
+  })
+
+  output$table_structure_summary <- renderDT({
+    if (is.null(rv$structures_df)) {
+      return(datatable(data.frame(), options = list(pageLength = 10)))
+    }
+    summary_data <- rv$structures_df %>%
+      select(sequence_index, length) %>%
+      mutate(
+        avg_length = round(mean(length), 1),
+        total_sequences = n()
+      ) %>%
+      distinct(avg_length, total_sequences)
+    
+    datatable(
+      summary_data,
+      options = list(
+        pageLength = 10,
+        dom = "ftp",
+        columnDefs = list(list(className = "dt-right", targets = 0:2))
+      )
+    )
+  })
+
+  output$plot_motif_struct_enrichment <- renderPlotly({
+    if (is.null(rv$struct_enrichment)) {
+      return(plotly_empty_rna("Run motif discovery and structure prediction"))
+    }
+    plot_motif_structure_enrichment(rv$struct_enrichment, top_motifs = 15)
+  })
+
+  output$plot_motif_struct_distribution <- renderPlotly({
+    if (is.null(rv$struct_distribution)) {
+      return(plotly_empty_rna("Run motif discovery and structure prediction"))
+    }
+    plot_motif_structure_distribution(rv$struct_distribution)
+  })
+
+  output$plot_struct_correlation <- renderPlotly({
+    if (is.null(rv$struct_correlation)) {
+      return(plotly_empty_rna("Run motif discovery and structure prediction"))
+    }
+    plot_structure_correlation(rv$struct_correlation)
+  })
+
+  output$table_motif_structure_map <- renderDT({
+    if (is.null(rv$motif_struct_map)) {
+      return(datatable(data.frame(), options = list(pageLength = 10)))
+    }
+    display_df <- rv$motif_struct_map %>%
+      select(motif, sequence_idx, sequence_position, structure_type) %>%
+      arrange(motif, sequence_idx)
+    
+    datatable(
+      display_df,
+      options = list(
+        pageLength = 10,
+        dom = "ftp",
+        columnDefs = list(list(className = "dt-center", targets = 0:3))
+      )
+    )
+  })
+
+  # --------------------------------------------------------------------------
+  # Download Handlers for Structure Results
+  # --------------------------------------------------------------------------
+  output$dl_structure_csv <- downloadHandler(
+    filename = function() { "structure_predictions.csv" },
+    content = function(file) {
+      if (!is.null(rv$structures_df)) {
+        write.csv(rv$structures_df, file, row.names = FALSE)
+      } else {
+        write.csv(data.frame(error = "No structure data available"), file, row.names = FALSE)
+      }
+    }
+  )
+
+  output$dl_motif_struct_csv <- downloadHandler(
+    filename = function() { "motif_structure_mapping.csv" },
+    content = function(file) {
+      if (!is.null(rv$motif_struct_map)) {
+        write.csv(rv$motif_struct_map, file, row.names = FALSE)
+      } else {
+        write.csv(data.frame(error = "No motif-structure mapping available"), file, row.names = FALSE)
+      }
+    }
+  )
+
+  output$dl_struct_enrich_csv <- downloadHandler(
+    filename = function() { "structure_enrichment.csv" },
+    content = function(file) {
+      if (!is.null(rv$struct_enrichment)) {
+        write.csv(rv$struct_enrichment, file, row.names = FALSE)
+      } else {
+        write.csv(data.frame(error = "No enrichment data available"), file, row.names = FALSE)
+      }
+    }
+  )

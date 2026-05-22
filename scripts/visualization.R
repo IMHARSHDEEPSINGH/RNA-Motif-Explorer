@@ -436,3 +436,272 @@ plot_dashboard_summary <- function(summary_stats, motif_params) {
     layout(paper_bgcolor = "#0D1117", plot_bgcolor = "#161B22",
            font = list(color = "#E6EDF3"))
 }
+
+# =============================================================================
+# Structure Visualization Functions
+# =============================================================================
+
+# --------------------------------------------------------------------------
+# plot_structure_statistics
+# Bar chart showing aggregate structure statistics (stems, loops, etc.)
+# --------------------------------------------------------------------------
+plot_structure_statistics <- function(structure_stats) {
+  if (is.null(structure_stats) || nrow(structure_stats) == 0) {
+    return(plotly_empty_rna("No structure statistics available"))
+  }
+  
+  # Select numeric statistics for visualization
+  stats_to_plot <- structure_stats %>%
+    filter(metric %in% c("avg_stems", "avg_loops", "avg_hairpins", 
+                         "avg_bulges", "avg_paired_bases", "avg_unpaired_bases")) %>%
+    mutate(
+      metric = factor(metric, 
+                     levels = c("avg_stems", "avg_loops", "avg_hairpins", 
+                               "avg_bulges", "avg_paired_bases", "avg_unpaired_bases"),
+                     labels = c("Stems", "Loops", "Hairpins", 
+                               "Bulges", "Paired Bases", "Unpaired Bases"))
+    )
+  
+  if (nrow(stats_to_plot) == 0) {
+    return(plotly_empty_rna("No structure statistics available"))
+  }
+  
+  p <- ggplot(stats_to_plot, aes(x = reorder(metric, as.numeric(metric)),
+                                  y = value, fill = metric)) +
+    geom_col(alpha = 0.8, width = 0.6) +
+    geom_text(aes(label = round(value, 2)),
+              vjust = -0.5, color = "#E6EDF3", size = 3.5) +
+    scale_fill_manual(values = c(
+      "Stems" = "#2ECC71",
+      "Loops" = "#3498DB",
+      "Hairpins" = "#F0C27F",
+      "Bulges" = "#FF7B72",
+      "Paired Bases" = "#388BFD",
+      "Unpaired Bases" = "#E74C3C"
+    ), guide = "none") +
+    labs(
+      title = "Average Secondary Structure Statistics",
+      x = "Structure Element",
+      y = "Average Count"
+    ) +
+    THEME_RNA() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  ggplotly(p, tooltip = c("x", "y")) %>%
+    layout(paper_bgcolor = "#0D1117", plot_bgcolor = "#161B22",
+           font = list(color = "#E6EDF3"))
+}
+
+# --------------------------------------------------------------------------
+# plot_motif_structure_enrichment
+# Heatmap of motif enrichment across structural elements
+# --------------------------------------------------------------------------
+plot_motif_structure_enrichment <- function(enrichment_results, top_motifs = 15) {
+  if (is.null(enrichment_results) || nrow(enrichment_results) == 0) {
+    return(plotly_empty_rna("No enrichment data available"))
+  }
+  
+  # Get top motifs by maximum enrichment
+  top_motif_list <- enrichment_results %>%
+    group_by(motif) %>%
+    summarise(max_enrichment = max(abs(log_odds_ratio), na.rm = TRUE), 
+              .groups = "drop") %>%
+    top_n(top_motifs, max_enrichment) %>%
+    pull(motif)
+  
+  heat_data <- enrichment_results %>%
+    filter(motif %in% top_motif_list) %>%
+    select(motif, structure_type, log_odds_ratio) %>%
+    pivot_wider(
+      id_cols = motif,
+      names_from = structure_type,
+      values_from = log_odds_ratio,
+      values_fill = 0
+    )
+  
+  if (nrow(heat_data) == 0) {
+    return(plotly_empty_rna("No enrichment data for selected motifs"))
+  }
+  
+  motif_labels <- heat_data$motif
+  heat_matrix <- as.matrix(heat_data[, -1])
+  struct_types <- colnames(heat_matrix)
+  
+  plot_ly(
+    z = heat_matrix,
+    x = struct_types,
+    y = motif_labels,
+    type = "heatmap",
+    colorscale = list(
+      c(0, "#FF7B72"),
+      c(0.5, "#161B22"),
+      c(1, "#2ECC71")
+    ),
+    hovertemplate = "Motif: %{y}<br>Structure: %{x}<br>Log Odds: %{z:.2f}<extra></extra>"
+  ) %>%
+    layout(
+      title = list(text = "Motif Enrichment by Secondary Structure Type",
+                   font = list(color = "#F0F6FC")),
+      xaxis = list(title = "Structure Type",
+                   tickfont = list(color = "#8B949E")),
+      yaxis = list(title = "Motif",
+                   tickfont = list(color = "#8B949E")),
+      paper_bgcolor = "#0D1117",
+      plot_bgcolor = "#161B22",
+      font = list(color = "#E6EDF3")
+    )
+}
+
+# --------------------------------------------------------------------------
+# plot_motif_structure_distribution
+# Stacked bar chart showing motif distribution across structure types
+# --------------------------------------------------------------------------
+plot_motif_structure_distribution <- function(distribution_results) {
+  if (is.null(distribution_results) || nrow(distribution_results) == 0) {
+    return(plotly_empty_rna("No distribution data available"))
+  }
+  
+  df <- distribution_results %>%
+    group_by(motif) %>%
+    top_n(3, count) %>%
+    ungroup() %>%
+    arrange(motif, desc(count))
+  
+  if (nrow(df) == 0) {
+    return(plotly_empty_rna("No distribution data available"))
+  }
+  
+  p <- ggplot(df, aes(x = reorder(motif, count, FUN = sum),
+                      y = percentage, fill = structure_type)) +
+    geom_col(position = "stack", alpha = 0.85, width = 0.7) +
+    scale_fill_manual(
+      values = c(
+        "stem" = "#2ECC71",
+        "loop" = "#3498DB",
+        "bulge" = "#FF7B72",
+        "hairpin" = "#F0C27F",
+        "unpaired" = "#E74C3C"
+      ),
+      guide = guide_legend(title = "Structure Type")
+    ) +
+    labs(
+      title = "Motif Distribution Across Structure Types",
+      x = "Motif",
+      y = "Percentage (%)"
+    ) +
+    coord_flip() +
+    THEME_RNA()
+  
+  ggplotly(p, tooltip = c("x", "y", "fill")) %>%
+    layout(paper_bgcolor = "#0D1117", plot_bgcolor = "#161B22",
+           font = list(color = "#E6EDF3"))
+}
+
+# --------------------------------------------------------------------------
+# plot_structure_correlation
+# Scatter plot of motif-structure correlation
+# --------------------------------------------------------------------------
+plot_structure_correlation <- function(correlation_results) {
+  if (is.null(correlation_results) || nrow(correlation_results) == 0) {
+    return(plotly_empty_rna("No correlation data available"))
+  }
+  
+  df <- correlation_results %>%
+    arrange(desc(abs(correlation))) %>%
+    head(20)
+  
+  if (nrow(df) == 0) {
+    return(plotly_empty_rna("No correlation data available"))
+  }
+  
+  df <- df %>%
+    mutate(
+      label = paste0(motif, " (", structure_type, ")"),
+      label = reorder(label, correlation)
+    )
+  
+  p <- ggplot(df, aes(x = label, y = correlation,
+                      fill = ifelse(correlation > 0, "Positive", "Negative"),
+                      text = paste0("Motif: ", motif,
+                                   "<br>Structure: ", structure_type,
+                                   "<br>Correlation: ", 
+                                   round(correlation, 3)))) +
+    geom_col(width = 0.7, alpha = 0.85) +
+    scale_fill_manual(
+      values = c("Positive" = "#2ECC71", "Negative" = "#FF7B72"),
+      guide = "none"
+    ) +
+    labs(
+      title = "Motif-Structure Correlation Analysis",
+      subtitle = "Top 20 correlations by absolute value",
+      x = "Motif (Structure Type)",
+      y = "Correlation Coefficient"
+    ) +
+    coord_flip() +
+    THEME_RNA()
+  
+  ggplotly(p, tooltip = "text") %>%
+    layout(paper_bgcolor = "#0D1117", plot_bgcolor = "#161B22",
+           font = list(color = "#E6EDF3"))
+}
+
+# --------------------------------------------------------------------------
+# plot_dot_bracket_structure
+# Visualize a dot-bracket structure annotation
+# Simple text-based visualization with structure coloring
+# --------------------------------------------------------------------------
+plot_dot_bracket_structure <- function(sequence, structure, title = "RNA Structure") {
+  if (nchar(sequence) != nchar(structure)) {
+    return(NULL)
+  }
+  
+  # Create position data
+  seq_chars <- strsplit(sequence, "")[[1]]
+  struct_chars <- strsplit(structure, "")[[1]]
+  
+  df <- tibble(
+    position = seq_along(seq_chars),
+    base = seq_chars,
+    structure = struct_chars,
+    structure_type = ifelse(struct_chars == ".", "Loop", 
+                           ifelse(struct_chars == "(", "5' Stem",
+                                  ifelse(struct_chars == ")", "3' Stem", "Other")))
+  )
+  
+  # Create visualization
+  p <- ggplot(df, aes(x = position, y = 1, fill = structure_type,
+                      text = paste0("Pos: ", position,
+                                   "<br>Base: ", base,
+                                   "<br>Structure: ", structure_type))) +
+    geom_tile(height = 0.8, width = 1, color = "#21262D") +
+    scale_fill_manual(
+      values = c(
+        "Loop" = "#3498DB",
+        "5' Stem" = "#2ECC71",
+        "3' Stem" = "#F0C27F",
+        "Other" = "#8B949E"
+      ),
+      name = "Structure Type"
+    ) +
+    scale_x_continuous(breaks = seq(1, nchar(sequence), by = 10)) +
+    labs(
+      title = title,
+      subtitle = structure,
+      x = "Position",
+      y = NULL
+    ) +
+    THEME_RNA() +
+    theme(
+      axis.text.y = element_blank(),
+      axis.ticks.y = element_blank(),
+      panel.grid.major.y = element_blank()
+    )
+  
+  ggplotly(p, tooltip = "text") %>%
+    layout(
+      paper_bgcolor = "#0D1117",
+      plot_bgcolor = "#161B22",
+      font = list(color = "#E6EDF3"),
+      xaxis = list(title = "Position")
+    )
+}
