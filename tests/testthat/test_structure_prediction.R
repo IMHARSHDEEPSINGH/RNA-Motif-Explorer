@@ -148,6 +148,25 @@ test_that("predict_structures_dataset returns valid structures", {
   }
 })
 
+test_that("predict_structures_dataset accepts RNAStringSet input", {
+  structures_df <- predict_structures_dataset(RNAStringSet(test_sequences))
+
+  expect_is(structures_df, "data.frame")
+  expect_equal(nrow(structures_df), length(test_sequences))
+  expect_true(all(structures_df$sequence == test_sequences))
+})
+
+test_that("map_motifs_to_structures_dataset accepts motif tables with kmer column", {
+  structures_df <- predict_structures_dataset(test_sequences)
+  motif_table <- data.frame(kmer = "AUGCGU", stringsAsFactors = FALSE)
+
+  mapping <- map_motifs_to_structures_dataset(test_sequences, structures_df, motif_table)
+
+  expect_is(mapping, "data.frame")
+  expect_gt(nrow(mapping), 0)
+  expect_true(all(mapping$motif == "AUGCGU"))
+})
+
 # ---- Tests for structure_statistics ----
 test_that("structure_statistics computes valid metrics", {
   structures_df <- predict_structures_dataset(test_sequences)

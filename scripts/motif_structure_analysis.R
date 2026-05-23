@@ -91,15 +91,23 @@ map_motifs_to_structures_dataset <- function(sequences, structures_df, motif_tab
   if (is.null(structures_df) || is.null(motif_table) || nrow(motif_table) == 0) {
     return(NULL)
   }
-  
+
+  motif_column <- if ("kmer" %in% names(motif_table)) {
+    "kmer"
+  } else if ("motif" %in% names(motif_table)) {
+    "motif"
+  } else {
+    stop("motif_table must contain a 'kmer' or 'motif' column")
+  }
+
   # Get unique motifs to analyze
-  motifs <- unique(motif_table$motif)
-  
+  motifs <- unique(motif_table[[motif_column]])
+
   # Source structure prediction to get helper functions
   # (Assuming it's already loaded)
-  
+
   all_mappings <- list()
-  
+
   for (seq_idx in seq_along(sequences)) {
     sequence <- sequences[seq_idx]
     structure <- structures_df$structure[seq_idx]
@@ -139,13 +147,21 @@ calculate_motif_structure_enrichment <- function(motif_structure_map, motif_tabl
   if (is.null(motif_structure_map) || nrow(motif_structure_map) == 0) {
     return(NULL)
   }
-  
-  motifs <- unique(motif_table$motif)
+
+  motif_column <- if ("kmer" %in% names(motif_table)) {
+    "kmer"
+  } else if ("motif" %in% names(motif_table)) {
+    "motif"
+  } else {
+    stop("motif_table must contain a 'kmer' or 'motif' column")
+  }
+
+  motifs <- unique(motif_table[[motif_column]])
   structure_types <- unique(motif_structure_map$structure_type)
   structure_types <- structure_types[!is.na(structure_types)]
-  
+
   enrichment_results <- list()
-  
+
   for (motif in motifs) {
     motif_rows <- which(motif_structure_map$motif == motif)
     

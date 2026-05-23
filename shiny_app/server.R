@@ -37,6 +37,8 @@ server <- function(input, output, session) {
     struct_correlation = NULL
   )
 
+  shinyjs::disable("run_structure_predict")
+
   set_status <- function(msg, type = "info") {
     prefix <- switch(type,
       info    = "[INFO] ",
@@ -70,12 +72,14 @@ server <- function(input, output, session) {
         incProgress(1.0, detail = "Done!")
         set_status(sprintf("Preprocessing complete: %d sequences ready.",
                            result$stats$summary$total_sequences), "success")
+        shinyjs::enable("run_structure_predict")
 
         # Update motif selector (empty until discovery runs)
         updateSelectInput(session, "logo_motif_select", choices = NULL)
       }, error = function(e) {
         set_status(paste("Preprocessing failed:", conditionMessage(e)), "error")
         rv$preproc_result <- NULL
+        shinyjs::disable("run_structure_predict")
       })
     })
   })
@@ -556,7 +560,6 @@ server <- function(input, output, session) {
     }
     paste(lines, collapse = "\n")
   })
-}
 
   # --------------------------------------------------------------------------
   # Step 4: Secondary Structure Prediction
@@ -569,8 +572,8 @@ server <- function(input, output, session) {
     withProgress(message = "Predicting structures...", value = 0, {
       tryCatch({
         incProgress(0.2, detail = "Starting RNAstructure...")
-        sequences <- rv$preproc_result$cleaned_sequences
-        
+        sequences <- normalize_structure_sequences(rv$preproc_result$sequences)
+
         incProgress(0.4, detail = "Predicting structures for all sequences...")
         structures_df <- predict_structures_dataset(sequences)
         incProgress(0.6, detail = "Computing structure statistics...")
@@ -633,14 +636,24 @@ server <- function(input, output, session) {
   # Structure Visualization Outputs
   # --------------------------------------------------------------------------
   output$structure_status <- renderUI({
+    if (is.null(rv$preproc_result)) {
+      return(
+        tags$div(
+          style = "color:#8B949E; padding:10px;",
+          "Preprocess a FASTA file first to enable structure prediction."
+        )
+      )
+    }
+
     if (is.null(rv$structures_df)) {
       return(
         tags$div(
           style = "color:#8B949E; padding:10px;",
-          "Structures not yet predicted. Enable and click button above."
+          "Ready to predict structures. Click the button above to start."
         )
       )
     }
+
     tags$div(
       style = "color:#2ECC71; padding:10px;",
       icon("check-circle"),
@@ -752,3 +765,4 @@ server <- function(input, output, session) {
       }
     }
   )
+}

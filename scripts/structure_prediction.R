@@ -14,6 +14,30 @@ library(stringr)
 # Falls back to heuristic-based structure prediction if not available.
 
 # --------------------------------------------------------------------------
+# normalize_structure_sequences
+# Converts supported sequence containers into a character vector of RNA bases.
+# --------------------------------------------------------------------------
+normalize_structure_sequences <- function(sequences) {
+  if (is.character(sequences)) {
+    return(sequences)
+  }
+
+  if (inherits(sequences, "RNAStringSet")) {
+    return(as.character(sequences))
+  }
+
+  if (inherits(sequences, "DNAStringSet")) {
+    return(gsub("T", "U", toupper(as.character(sequences))))
+  }
+
+  if (is.null(sequences)) {
+    stop("sequences must be a character vector or Biostrings sequence set")
+  }
+
+  stop("sequences must be a character vector or Biostrings sequence set")
+}
+
+# --------------------------------------------------------------------------
 # predict_secondary_structure
 # Predicts secondary structure for a single RNA sequence
 # Returns dot-bracket notation (e.g., "(((...)))" for a hairpin)
@@ -90,31 +114,29 @@ predict_structure_heuristic <- function(sequence) {
 # --------------------------------------------------------------------------
 # predict_structures_dataset
 # Predict secondary structures for all sequences in a dataset
-# Input: cleaned sequences as character vector
+# Input: character vector or Biostrings sequence set
 # Output: tibble with sequence index, sequence string, and dot-bracket structure
 # --------------------------------------------------------------------------
 predict_structures_dataset <- function(sequences) {
-  if (!is.character(sequences)) {
-    stop("sequences must be a character vector")
-  }
+  normalized_sequences <- normalize_structure_sequences(sequences)
   
-  cat("Predicting secondary structures for", length(sequences), "sequences...\n")
+  cat("Predicting secondary structures for", length(normalized_sequences), "sequences...\n")
   
   structures <- sapply(
-    seq_along(sequences),
+    seq_along(normalized_sequences),
     function(i) {
-      if (i %% max(1, length(sequences) %/% 10) == 0) {
-        cat(sprintf("  Progress: %d/%d\n", i, length(sequences)))
+      if (i %% max(1, length(normalized_sequences) %/% 10) == 0) {
+        cat(sprintf("  Progress: %d/%d\n", i, length(normalized_sequences)))
       }
-      predict_secondary_structure(sequences[i])
+      predict_secondary_structure(normalized_sequences[i])
     }
   )
   
   tibble(
-    sequence_index = seq_along(sequences),
-    sequence = sequences,
+    sequence_index = seq_along(normalized_sequences),
+    sequence = normalized_sequences,
     structure = structures,
-    length = nchar(sequences)
+    length = nchar(normalized_sequences)
   )
 }
 
@@ -228,19 +250,26 @@ get_position_structure_type <- function(structure, position) {
 # Output: tibble with position, base, structure_char, structure_type
 # --------------------------------------------------------------------------
 map_position_to_structure <- function(sequence, structure) {
-  if (nchar(sequence) != nchar(structure)) {
+  seq_chars <- strsplit(as.character(sequence), "")[[1]]
+  struct_chars <- strsplit(as.character(structure), "")[[1]]
+
+  if (length(seq_chars) != length(struct_chars)) {
     warning("Sequence and structure lengths don't match")
-    return(NULL)
+
+    if (length(seq_chars) > length(struct_chars)) {
+      struct_chars <- c(struct_chars, rep(".", length(seq_chars) - length(struct_chars)))
+    } else {
+      struct_chars <- struct_chars[seq_len(length(seq_chars))]
+    }
   }
-  
-  seq_chars <- strsplit(sequence, "")[[1]]
-  struct_chars <- strsplit(structure, "")[[1]]
-  
+
+  normalized_structure <- paste(struct_chars, collapse = "")
+
   types <- sapply(
-    seq_along(struct_chars),
-    function(i) get_position_structure_type(structure, i)
+    seq_along(seq_chars),
+    function(i) get_position_structure_type(normalized_structure, i)
   )
-  
+
   tibble(
     position = seq_along(seq_chars),
     base = seq_chars,
