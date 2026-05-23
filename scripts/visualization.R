@@ -275,6 +275,7 @@ plot_positional_heatmap <- function(pos_dist, top_kmers = NULL,
     hovertemplate = "k-mer: %{y}<br>Position: %{x}<br>Density: %{z:.3f}<extra></extra>"
   ) %>%
     layout(
+      autosize   = TRUE,
       title      = list(text = "Motif Positional Enrichment Heatmap",
                          font = list(color = "#F0F6FC")),
       xaxis      = list(title = "Relative Position in Sequence",
@@ -285,8 +286,10 @@ plot_positional_heatmap <- function(pos_dist, top_kmers = NULL,
                          titlefont = list(color = "#C9D1D9")),
       paper_bgcolor = "#0D1117",
       plot_bgcolor  = "#161B22",
-      font          = list(color = "#E6EDF3")
-    )
+      font          = list(color = "#E6EDF3"),
+      margin        = list(l = 90, r = 70, t = 60, b = 70)
+    ) %>%
+    config(responsive = TRUE)
 }
 
 # -----------------------------------------------------------------------------
@@ -323,8 +326,15 @@ plot_motif_density <- function(pos_dist, top_n = 8) {
     THEME_RNA()
 
   ggplotly(p) %>%
-    layout(paper_bgcolor = "#0D1117", plot_bgcolor = "#161B22",
-           font = list(color = "#E6EDF3"))
+    layout(
+      autosize = TRUE,
+      paper_bgcolor = "#0D1117",
+      plot_bgcolor = "#161B22",
+      font = list(color = "#E6EDF3"),
+      margin = list(l = 70, r = 25, t = 65, b = 55),
+      legend = list(x = 1.02, y = 1)
+    ) %>%
+    config(responsive = TRUE)
 }
 
 # -----------------------------------------------------------------------------

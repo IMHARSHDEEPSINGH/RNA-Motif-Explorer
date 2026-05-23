@@ -34,8 +34,20 @@ custom_css <- "
   /* Boxes */
   .box { background: #161B22 !important; border-top-color: #388BFD !important;
     border-radius: 8px; }
+  .box-body { background: #161B22 !important; }
   .box-header { color: #E6EDF3 !important; }
   .box-title { color: #58A6FF !important; font-size: 14px; font-weight: 600; }
+  .content { background-color: #0D1117 !important; }
+  .tab-pane .row { margin-left: 0; margin-right: 0; }
+  .tab-pane .box { margin-bottom: 20px; }
+
+  /* Plotly sizing */
+  .plotly.html-widget,
+  .js-plotly-plot,
+  .plot-container,
+  .svg-container {
+    width: 100% !important;
+  }
 
   /* Value boxes */
   .small-box { border-radius: 8px !important; }
@@ -366,14 +378,14 @@ ui <- dashboardPage(
           box(
             width = 12, title = "Positional Enrichment Heatmap",
             solidHeader = TRUE,
-            plotlyOutput("plot_pos_heatmap", height = "500px")
+            plotlyOutput("plot_pos_heatmap", width = "100%", height = "500px")
           )
         ),
         fluidRow(
           box(
             width = 12, title = "Motif Positional Density",
             solidHeader = TRUE,
-            plotlyOutput("plot_density", height = "380px")
+            plotlyOutput("plot_density", width = "100%", height = "380px")
           )
         )
       ),
